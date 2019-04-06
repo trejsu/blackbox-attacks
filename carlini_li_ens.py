@@ -23,15 +23,15 @@ CONST_FACTOR = 10.0     # f>1, rate at which we increase constant, smaller bette
 CONFIDENCE = 0          # how strong the adversarial example should be
 EPS = 0.3
 
-FLAGS = flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 class CarliniLiEns:
     def __init__(self, sess, models,
-                 targeted = TARGETED, learning_rate = LEARNING_RATE,
-                 max_iterations = MAX_ITERATIONS, abort_early = ABORT_EARLY,
-                 initial_const = INITIAL_CONST, largest_const = LARGEST_CONST,
-                 const_factor = CONST_FACTOR, confidence = CONFIDENCE, eps=EPS):
+        targeted = TARGETED, learning_rate = LEARNING_RATE,
+        max_iterations = MAX_ITERATIONS, abort_early = ABORT_EARLY,
+        initial_const = INITIAL_CONST, largest_const = LARGEST_CONST,
+        const_factor = CONST_FACTOR, confidence = CONFIDENCE, eps=EPS):
         """
         The L_infinity optimized attack.
         Returns adversarial examples for the supplied model.
@@ -204,7 +204,7 @@ class CarliniLiEns:
         r = []
         i = 0
         for img,target in zip(imgs, targets):
-            print i
+            print(i)
             r.extend(self.attack_single(img, target))
             i += 1
         return np.array(r)

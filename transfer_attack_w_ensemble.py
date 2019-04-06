@@ -12,8 +12,7 @@ from os.path import basename
 from time import time
 from keras.utils import np_utils
 
-from tensorflow.python.platform import flags
-FLAGS = flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 SAVE_FLAG = False
 
@@ -34,7 +33,7 @@ def main(attack, src_model_names, target_model_name):
     np.random.seed(0)
     tf.set_random_seed(0)
 
-    flags.DEFINE_integer('BATCH_SIZE', 1, 'Size of batches')
+    tf.flags.DEFINE_integer('BATCH_SIZE', 1, 'Size of batches')
     set_mnist_flags()
 
     dim = FLAGS.IMAGE_ROWS*FLAGS.IMAGE_COLS*FLAGS.NUM_CHANNELS
@@ -66,13 +65,13 @@ def main(attack, src_model_names, target_model_name):
     if attack == "test":
         for (name, src_model) in zip(src_model_names, src_models):
             _, _, err = tf_test_error_rate(src_model, x, X_test, Y_test)
-            print '{}: {:.1f}'.format(basename(name), err)
+            print('{}: {:.1f}'.format(basename(name), err))
         if target_model_name is not None:
             _, _,err = tf_test_error_rate(target_model, x, X_test, Y_test)
-        print '{}: {:.1f}'.format(basename(target_model_name), err)
+        print('{}: {:.1f}'.format(basename(target_model_name), err))
 
-        return        
-    
+        return
+
     if args.targeted_flag == 1:
         pickle_name =  attack + '_' + src_model_name_joint+'_'+'_'+args.loss_type+'_targets.p'
         if os.path.exists(pickle_name):
@@ -86,13 +85,13 @@ def main(attack, src_model_names, target_model_name):
                 allowed_targets = list(range(FLAGS.NUM_CLASSES))
             # targets = np.random.randint(10, size = BATCH_SIZE*BATCH_EVAL_NUM)
             targets = np.array(targets)
-            print targets
+            print(targets)
             targets_cat = np_utils.to_categorical(targets, FLAGS.NUM_CLASSES).astype(np.float32)
             Y_test = targets_cat
             if SAVE_FLAG == True:
                 pickle.dump(Y_test, open(pickle_name,'wb'))
-    
-    
+
+
     # take the random step in the RAND+FGSM
     if attack == "rand_fgs":
         X_test = np.clip(
@@ -153,22 +152,22 @@ def main(attack, src_model_names, target_model_name):
             print(pickle_name)
             Y_test = Y_test[0:l]
             if os.path.exists(pickle_name) and attack == "CW_ens":
-                print 'Loading adversarial samples'
+                print('Loading adversarial samples')
                 X_adv = pickle.load(open(pickle_name,'rb'))
 
                 for (name, src_model) in zip(src_model_names, src_models):
                     preds_adv, _, err = tf_test_error_rate(src_model, x, X_adv, Y_test)
-                    print '{}->{}: {:.1f}'.format(src_model_name_joint, basename(name), err)
+                    print('{}->{}: {:.1f}'.format(src_model_name_joint, basename(name), err))
 
                 preds_adv,_,err = tf_test_error_rate(target_model, x, X_adv, Y_test)
-                print '{}->{}: {:.1f}'.format(src_model_name_joint, basename(target_model_name), err)
+                print('{}->{}: {:.1f}'.format(src_model_name_joint, basename(target_model_name), err))
 
                 return
 
             X_test = X_test[0:l]
             time1 = time()
             cli = CarliniLiEns(K.get_session(), src_models, targeted=False,
-                                        confidence=args.kappa, eps=eps)
+                               confidence=args.kappa, eps=eps)
 
             X_adv = cli.attack(X_test, Y_test)
 
@@ -183,11 +182,11 @@ def main(attack, src_model_names, target_model_name):
             for (name, src_model) in zip(src_model_names, src_models):
                 print ('Carrying out white-box attack')
                 pres, _, err = tf_test_error_rate(src_model, x, X_adv, Y_test)
-                print '{}->{}: {:.1f}'.format(src_model_name_joint, basename(name), err)
+                print('{}->{}: {:.1f}'.format(src_model_name_joint, basename(name), err))
             if target_model_name is not None:
                 print ('Carrying out black-box attack')
                 preds, orig, err = tf_test_error_rate(target_model, x, X_adv, Y_test)
-                print '{}->{}: {:.1f}'.format(src_model_name_joint, basename(target_model_name), err)
+                print('{}->{}: {:.1f}'.format(src_model_name_joint, basename(target_model_name), err))
 
             return
 
@@ -196,10 +195,10 @@ def main(attack, src_model_names, target_model_name):
             pickle_name = attack + '_' + src_model_name_joint+'_'+args.loss_type+'_'+str(eps)+'_adv_t.p'
 
         if os.path.exists(pickle_name):
-            print 'Loading adversarial samples'
+            print('Loading adversarial samples')
             X_adv = pickle.load(open(pickle_name,'rb'))
         else:
-            print 'Generating adversarial samples'
+            print('Generating adversarial samples')
             X_adv = batch_eval([x, y], [adv_x], [X_test, Y_test])[0]
             if SAVE_FLAG == True:
                 pickle.dump(X_adv, open(pickle_name,'wb'))
@@ -213,7 +212,7 @@ def main(attack, src_model_names, target_model_name):
             preds_adv, orig, err = tf_test_error_rate(src_model, x, X_adv, Y_test[0:l])
             if args.targeted_flag==1:
                 err = 100.0 - err
-            print '{}->{}: {:.1f}'.format(basename(name), basename(name), err)
+            print('{}->{}: {:.1f}'.format(basename(name), basename(name), err))
 
         # black-box attack
         if target_model_name is not None:
@@ -221,7 +220,7 @@ def main(attack, src_model_names, target_model_name):
             preds, _, err = tf_test_error_rate(target_model, x, X_adv, Y_test)
             if args.targeted_flag==1:
                 err = 100.0 - err
-            print '{}->{}: {:.1f}, {}, {} {}'.format(src_model_name_joint, basename(target_model_name), err, avg_l2_perturb, eps, attack)
+            print('{}->{}: {:.1f}, {}, {} {}'.format(src_model_name_joint, basename(target_model_name), err, avg_l2_perturb, eps, attack))
 
 if __name__ == "__main__":
     import argparse

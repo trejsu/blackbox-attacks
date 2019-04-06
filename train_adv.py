@@ -1,6 +1,5 @@
 import keras
 from keras import backend as K
-from tensorflow.python.platform import flags
 from keras.models import save_model
 
 from mnist import *
@@ -8,6 +7,7 @@ from tf_utils import tf_train, tf_test_error_rate
 from attack_utils import gen_grad
 from fgs import symbolic_fgs, iter_fgs
 from os.path import basename
+import tensorflow as tf
 
 FLAGS = flags.FLAGS
 
@@ -17,7 +17,7 @@ def main(model_name, adv_model_names, model_type):
     assert keras.backend.backend() == "tensorflow"
     set_mnist_flags()
 
-    flags.DEFINE_bool('NUM_EPOCHS', args.epochs, 'Number of epochs')
+    tf.flags.DEFINE_bool('NUM_EPOCHS', args.epochs, 'Number of epochs')
 
     # Get MNIST test data
     X_train, Y_train, X_test, Y_test = data_mnist()
@@ -40,10 +40,10 @@ def main(model_name, adv_model_names, model_type):
     ens_str = ''
     for i in range(len(adv_model_names)):
         adv_models[i] = load_model(adv_model_names[i])
-	if len(adv_models)>0:
-	    name = basename(adv_model_names[i])
-	    model_index = name.replace('model','')
-	    ens_str += model_index
+        if len(adv_models)>0:
+            name = basename(adv_model_names[i])
+            model_index = name.replace('model','')
+            ens_str += model_index
     model = model_mnist(type=model_type)
 
     x_advs = [None] * (len(adv_models) + 1)

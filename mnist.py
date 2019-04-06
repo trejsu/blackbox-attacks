@@ -1,27 +1,27 @@
+import argparse
+
+import numpy as np
+import tensorflow as tf
 from keras.datasets import mnist
+from keras.layers import Dense, Dropout, Activation, Flatten, Conv2D
+from keras.layers import MaxPooling2D, Convolution2D
 from keras.models import Sequential, model_from_json
-from keras.layers import Dense, Dropout, Activation, Flatten, Input
-from keras.layers import Convolution2D, MaxPooling2D
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
 
-import argparse
-import numpy as np
-
-from tensorflow.python.platform import flags
-FLAGS = flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 def set_mnist_flags():
     try:
-        flags.DEFINE_integer('BATCH_SIZE', 64, 'Size of training batches')
+        tf.flags.DEFINE_integer('BATCH_SIZE', 64, 'Size of training batches')
     except argparse.ArgumentError:
         pass
 
-    flags.DEFINE_integer('NUM_CLASSES', 10, 'Number of classification classes')
-    flags.DEFINE_integer('IMAGE_ROWS', 28, 'Input row dimension')
-    flags.DEFINE_integer('IMAGE_COLS', 28, 'Input column dimension')
-    flags.DEFINE_integer('NUM_CHANNELS', 1, 'Input depth dimension')
+    tf.flags.DEFINE_integer('NUM_CLASSES', 10, 'Number of classification classes')
+    tf.flags.DEFINE_integer('IMAGE_ROWS', 28, 'Input row dimension')
+    tf.flags.DEFINE_integer('IMAGE_COLS', 28, 'Input column dimension')
+    tf.flags.DEFINE_integer('NUM_CHANNELS', 1, 'Input depth dimension')
 
 
 def data_mnist(one_hot=True):
@@ -33,16 +33,8 @@ def data_mnist(one_hot=True):
 
     y_train = y_train
 
-
-    X_train = X_train.reshape(X_train.shape[0],
-                              FLAGS.IMAGE_ROWS,
-                              FLAGS.IMAGE_COLS,
-                              FLAGS.NUM_CHANNELS)
-
-    X_test = X_test.reshape(X_test.shape[0],
-                            FLAGS.IMAGE_ROWS,
-                            FLAGS.IMAGE_COLS,
-                            FLAGS.NUM_CHANNELS)
+    X_train = X_train.reshape(X_train.shape[0], FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)
+    X_test = X_test.reshape(X_test.shape[0], FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)
 
     X_train = X_train.astype('float32')
     X_test = X_test.astype('float32')
@@ -52,7 +44,7 @@ def data_mnist(one_hot=True):
     print(X_train.shape[0], 'train samples')
     print(X_test.shape[0], 'test samples')
 
-    print "Loaded MNIST test data."
+    print("Loaded MNIST test data.")
 
     if one_hot:
         # convert class vectors to binary class matrices
@@ -64,11 +56,10 @@ def data_mnist(one_hot=True):
 
 def modelA():
     model = Sequential()
-    model.add(Conv2D(64, (5, 5),
-                            padding='valid'))
+    model.add(Convolution2D(64, (5, 5), padding='valid'))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(64, (5, 5)))
+    model.add(Convolution2D(64, (5, 5)))
     model.add(Activation('relu'))
 
     model.add(Dropout(0.25))
@@ -84,21 +75,14 @@ def modelA():
 
 def modelB():
     model = Sequential()
-    model.add(Dropout(0.2, input_shape=(FLAGS.IMAGE_ROWS,
-                                        FLAGS.IMAGE_COLS,
-                                        FLAGS.NUM_CHANNELS)))
-    model.add(Convolution2D(64, 8, 8,
-                            subsample=(2, 2),
-                            border_mode='same'))
+    model.add(Dropout(0.2, input_shape=(FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)))
+    model.add(Convolution2D(64, 8, 8, subsample=(2, 2), border_mode='same'))
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(128, 6, 6,
-                            subsample=(2, 2),
-                            border_mode='valid'))
+    model.add(Convolution2D(128, 6, 6, subsample=(2, 2), border_mode='valid'))
     model.add(Activation('relu'))
 
-    model.add(Convolution2D(128, 5, 5,
-                            subsample=(1, 1)))
+    model.add(Convolution2D(128, 5, 5, subsample=(1, 1)))
     model.add(Activation('relu'))
 
     model.add(Dropout(0.5))
@@ -150,6 +134,7 @@ def modelD():
     model.add(Dense(FLAGS.NUM_CLASSES))
     return model
 
+
 def modelE():
     model = Sequential()
 
@@ -163,6 +148,7 @@ def modelE():
     model.add(Dense(FLAGS.NUM_CLASSES))
 
     return model
+
 
 def modelF():
     model = Sequential()
@@ -189,10 +175,12 @@ def modelF():
 
     return model
 
+
 def model_mnist(type=1):
     """
     Defines MNIST model using Keras sequential model
     """
+    print(f'Returning model {type}')
 
     models = [modelA, modelB, modelC, modelD, modelE, modelF]
 
@@ -206,13 +194,14 @@ def data_gen_mnist(X_train):
     return datagen
 
 
-def load_model(model_path, type=1):
-
+def load_model(model_path, type=0):
+    print(f'Loading model from {model_path}')
     try:
-        with open(model_path+'.json', 'r') as f:
+        with open(model_path + '.json', 'r') as f:
             json_string = f.read()
             model = model_from_json(json_string)
     except IOError:
+        print(f'Failed to read model from json, trying to load mnist model type {type}')
         model = model_mnist(type=type)
 
     model.load_weights(model_path)

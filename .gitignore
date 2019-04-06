@@ -22,3 +22,4 @@ output_data/*
 paper_images/
 *.png
 *.jpg
+.idea/*

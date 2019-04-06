@@ -17,6 +17,7 @@ from sklearn.preprocessing import normalize
 from mnist import data_mnist, set_mnist_flags, load_model
 
 from tqdm import tqdm
+from es.draw_multiple import draw
 
 K.set_learning_phase(0)
 
@@ -27,9 +28,9 @@ BATCH_SIZE = 1
 CLIP_MIN = 0
 CLIP_MAX = 1
 PARALLEL_FLAG = True
+THREADS = 8
 
-ADVERSARIAL_DATA_PATH = '/Users/mchrusci/uj/shaper_data/adversarial'
-RESULTS_PATH = '/Users/mchrusci/uj/shaper_data/adversarial/results.csv'
+ADVERSARIAL_DATA_PATH = '/Users/mchrusci/uj/shaper_data/adversarial/fixed/'
 
 
 def wb_write_out(eps, white_box_error, wb_norm):
@@ -71,7 +72,10 @@ def xent_est(prediction, x, x_plus_i, x_minus_i, curr_target):
 
 
 def run_model(output_tensor, input_tensor, input_data):
-    return K.get_session().run([output_tensor], feed_dict={input_tensor: input_data})[0]
+    # batch_len = input_data.shape[0]
+    batched = input_data.reshape((-1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+    drawings = draw(images=batched, n=20, alpha=0.8, background="000000")
+    return K.get_session().run([output_tensor], feed_dict={input_tensor: drawings})[0]
 
 
 def CW_est(logits, x, x_plus_i, x_minus_i, curr_sample, curr_target):
@@ -151,8 +155,8 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
                                            U=U)
 
         # Creating pool of threads
-        pool = ThreadPool(3)
-        all_grads = pool.map(partial_overall_grad_est, j_list)
+        with ThreadPool(THREADS) as pool:
+            all_grads = list(tqdm(pool.imap(partial_overall_grad_est, j_list), total=len(j_list)))
 
         # print(len(all_grads))
 
@@ -227,8 +231,6 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
     NUM_SAVED = 0
 
     for i in tqdm(range(BATCH_EVAL_NUM)):
-        if i % 10 == 0:
-            print('Batch no.: {}, {}'.format(i, eps))
         curr_sample = X_test[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
             (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
         curr_sample_ini = X_test_ini[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
@@ -243,8 +245,6 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
         if 'query_based' in args.method:
             loss_grad = finite_diff_method(prediction, logits, x, curr_sample,
                                            curr_target, p_t, dim, U)
-        elif 'one_shot' in args.method:
-            loss_grad = one_shot_method(prediction, x, curr_sample, curr_target, p_t)
 
         # Getting signed gradient of loss
         if args.norm == 'linf':
@@ -315,10 +315,6 @@ def save_total(eps, adv_images, err, avg_l2_perturb, Y, pred, prob):
     file = os.path.join(ADVERSARIAL_DATA_PATH,
                         f'{args.method}-norm-{args.norm}-eps-{eps}-loss-{args.loss_type}-adv-samples')
     np.savez(file=file, X=adv_images, Y=Y, pred=pred, prob=prob)
-    targeted = '_un' not in args.method
-    with open(RESULTS_PATH, "a+") as csv:
-        csv.write(
-            f"{args.method},{args.target_model},{args.norm},{args.alpha},{targeted},{eps},{err},{avg_l2_perturb}\n")
 
 
 def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logits, eps, dim, beta):
@@ -349,8 +345,6 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
         eps_mod = eps - args.alpha
 
         for j in tqdm(range(args.num_iter)):
-            if j % 10 == 0:
-                print('Num_iter:{}'.format(j))
             curr_prediction = run_model(prediction, x, curr_sample)
 
             p_t = curr_prediction[np.arange(BATCH_SIZE), list(curr_target)]
@@ -358,10 +352,6 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
             if 'query_based' in args.method:
                 loss_grad = finite_diff_method(prediction, logits, x, curr_sample,
                                                curr_target, p_t, dim, U)
-            elif 'spsa' in args.method:
-                loss_grad = spsa(prediction, logits, x, curr_sample,
-                                 curr_target, p_t, dim)
-                # print loss_grad.shape
 
             # Getting signed gradient of loss
             if args.norm == 'linf':
@@ -519,8 +509,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("target_model", help="target model for attack")
-    parser.add_argument("--method", choices=['query_based', 'spsa_iter',
-                                             'query_based_un', 'spsa_un_iter',
+    parser.add_argument("--method", choices=['query_based', 'query_based_un',
                                              'query_based_un_iter', 'query_based_iter'],
                         default='query_based_un')
     parser.add_argument("--delta", type=float, default=0.01,
@@ -554,10 +543,7 @@ if __name__ == "__main__":
     if args.num_comp != 784:
         PCA_FLAG = True
 
-    if '_iter' in args.method:
-        BATCH_EVAL_NUM = 10
-    else:
-        BATCH_EVAL_NUM = 10
+    BATCH_EVAL_NUM = 1
 
     if RANDOM is False:
         for i in range(FLAGS.NUM_CLASSES):

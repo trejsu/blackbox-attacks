@@ -24,7 +24,8 @@ K.set_learning_phase(0)
 FLAGS = tf.flags.FLAGS
 
 RANDOM = True
-BATCH_SIZE = 1
+BATCH_SIZE = 10
+BATCH_EVAL_NUM = 10
 CLIP_MIN = 0
 CLIP_MAX = 1
 PARALLEL_FLAG = True
@@ -33,21 +34,8 @@ THREADS = 8
 ADVERSARIAL_DATA_PATH = '/Users/mchrusci/uj/shaper_data/adversarial/fixed/'
 
 
-def wb_write_out(eps, white_box_error, wb_norm):
-    if RANDOM is False:
-        print('Fraction of targets achieved (white-box) for {}: {}'.format(target, white_box_error))
-    else:
-        print('Fraction of targets achieved (white-box): {}'.format(white_box_error))
-    return
-
-
 def est_write_out(eps, success, avg_l2_perturb, X_adv=None):
-    if RANDOM is False:
-        print('Fraction of targets achieved (query-based) with {} for {}: {}'.format(
-            target_model_name, target, success))
-    else:
-        print('Fraction of targets achieved (query-based): {}'.format(success))
-    return
+    print('Fraction of targets achieved (query-based): {}'.format(success))
 
 
 def pca_components(X, dim):
@@ -72,10 +60,12 @@ def xent_est(prediction, x, x_plus_i, x_minus_i, curr_target):
 
 
 def run_model(output_tensor, input_tensor, input_data):
-    # batch_len = input_data.shape[0]
-    batched = input_data.reshape((-1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
-    drawings = draw(images=batched, n=20, alpha=0.8, background="000000")
-    return K.get_session().run([output_tensor], feed_dict={input_tensor: drawings})[0]
+    if args.redraw:
+        batched = input_data.reshape((-1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+        input = draw(images=batched, n=20, alpha=0.8, background="000000")
+    else:
+        input = input_data
+    return K.get_session().run([output_tensor], feed_dict={input_tensor: input})[0]
 
 
 def CW_est(logits, x, x_plus_i, x_minus_i, curr_sample, curr_target):
@@ -172,8 +162,12 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
                     curr_indices = random_indices[j * args.group_size:]
                 row = curr_indices // FLAGS.IMAGE_COLS
                 col = curr_indices % FLAGS.IMAGE_COLS
-            for i in range(len(curr_indices)):
-                grad_est[:, row[i], col[i]] = all_grads[j].reshape((BATCH_SIZE, 1))
+                for i in range(len(curr_indices)):
+                    grad_est[:, row[i], col[i]] = all_grads[j].reshape((BATCH_SIZE, 1))
+            elif PCA_FLAG:
+                basis_vec = np.zeros((BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                basis_vec[:] = U[:, j].reshape((1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                grad_est += basis_vec * all_grads[j][:, None, None, None]
 
     else:
         for j in tqdm(range(num_groups)):
@@ -188,7 +182,7 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
                 col = curr_indices % FLAGS.IMAGE_COLS
                 for i in range(len(curr_indices)):
                     grad_est[:, row[i], col[i]] = single_grad_est.reshape((BATCH_SIZE, 1))
-            elif PCA_FLAG == True:
+            elif PCA_FLAG:
                 basis_vec = np.zeros(
                     (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
                 basis_vec[:] = U[:, j].reshape(
@@ -296,24 +290,14 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
     print('Total time: {}, Average time: {}'.format(time2 - time1, (time2 - time1) / (
         BATCH_SIZE * BATCH_EVAL_NUM)))
 
-    save_total(eps, X_adv, success, avg_l2_perturb, total_Y, total_adv_pred, total_adv_prob)
+    save_total(eps, X_adv, total_Y, total_adv_pred, total_adv_prob)
 
     return
 
 
-def save_single_sample(X_adv, eps, i):
-    # sample_x_idx = np.random.randint(0, X_adv.shape[0] + 1)
-    sample_x_idx = 666
-    sample_x_adv = X_adv[sample_x_idx]
-    sample_x_adv_name = f'{args.method}-norm-{args.norm}-eps-{eps}-i-{i}.png'
-    sample_x_adv_path = os.path.join(ADVERSARIAL_DATA_PATH, sample_x_adv_name)
-    scipy.misc.imsave(sample_x_adv_path,
-                      sample_x_adv.reshape(FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS))
-
-
-def save_total(eps, adv_images, err, avg_l2_perturb, Y, pred, prob):
+def save_total(eps, adv_images, Y, pred, prob):
     file = os.path.join(ADVERSARIAL_DATA_PATH,
-                        f'{args.method}-norm-{args.norm}-eps-{eps}-loss-{args.loss_type}-adv-samples')
+                        f'{args.method}-norm-{args.norm}-eps-{eps}-loss-{args.loss_type}-size-{args.group_size}-components-{args.num_comp}-adv-samples')
     np.savez(file=file, X=adv_images, Y=Y, pred=pred, prob=prob)
 
 
@@ -418,7 +402,7 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
     print('Total time: {}, Average time: {}'.format(time2 - time1, (time2 - time1) / (
         BATCH_SIZE * BATCH_EVAL_NUM)))
 
-    save_total(eps, X_adv, success, avg_l2_perturb, total_Y, total_adv_pred, total_adv_prob)
+    save_total(eps, X_adv, total_Y, total_adv_pred, total_adv_prob)
 
     return
 
@@ -494,13 +478,9 @@ def main(target_model_name, target=None):
 
     for eps in eps_list:
         if '_iter' in args.method:
-            # white_box_fgsm_iter(prediction, target_model, x, logits, y, X_test, X_test_ini, targets,
-            #                     targets_cat, eps, dim, args.beta)
             estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logits, eps, dim,
                                        args.beta)
         else:
-            # white_box_fgsm(prediction, target_model, x, logits, y, X_test, X_test_ini, targets,
-            #                targets_cat, eps, dim)
             estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, eps, dim)
 
 
@@ -511,7 +491,7 @@ if __name__ == "__main__":
     parser.add_argument("target_model", help="target model for attack")
     parser.add_argument("--method", choices=['query_based', 'query_based_un',
                                              'query_based_un_iter', 'query_based_iter'],
-                        default='query_based_un')
+                        default='query_based')
     parser.add_argument("--delta", type=float, default=0.01,
                         help="local perturbation")
     parser.add_argument("--norm", type=str, default='linf',
@@ -522,7 +502,7 @@ if __name__ == "__main__":
                         help="Strength of CW sample")
     parser.add_argument("--alpha", type=float, default=0.0,
                         help="Strength of random perturbation")
-    parser.add_argument("--group_size", type=int, default=1,
+    parser.add_argument("--group_size", type=int, default=10,
                         help="Number of features to group together")
     parser.add_argument("--num_comp", type=int, default=784,
                         help="Number of pca components")
@@ -530,6 +510,7 @@ if __name__ == "__main__":
                         help="Number of iterations")
     parser.add_argument("--beta", type=int, default=0.01,
                         help="Step size per iteration")
+    parser.add_argument("--redraw", type=bool, default=False)
 
     args = parser.parse_args()
 
@@ -542,8 +523,6 @@ if __name__ == "__main__":
     PCA_FLAG = False
     if args.num_comp != 784:
         PCA_FLAG = True
-
-    BATCH_EVAL_NUM = 1
 
     if RANDOM is False:
         for i in range(FLAGS.NUM_CLASSES):

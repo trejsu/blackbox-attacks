@@ -296,8 +296,10 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
 
 
 def save_total(eps, adv_images, Y, pred, prob):
-    file = os.path.join(ADVERSARIAL_DATA_PATH,
-                        f'{args.method}-norm-{args.norm}-eps-{eps}-loss-{args.loss_type}-size-{args.group_size}-components-{args.num_comp}-adv-samples')
+    name = f'{args.method}-norm-{args.norm}-eps-{eps}-loss-{args.loss_type}-size-{args.group_size}-components-{args.num_comp}-adv-samples'
+    if args.redraw:
+        name += '-redrawned'
+    file = os.path.join(ADVERSARIAL_DATA_PATH, name)
     np.savez(file=file, X=adv_images, Y=Y, pred=pred, prob=prob)
 
 
@@ -510,7 +512,7 @@ if __name__ == "__main__":
                         help="Number of iterations")
     parser.add_argument("--beta", type=int, default=0.01,
                         help="Step size per iteration")
-    parser.add_argument("--redraw", type=bool, default=False)
+    parser.add_argument("--redraw", type=bool, default=True)
 
     args = parser.parse_args()
 

@@ -58,7 +58,7 @@ if __name__ == '__main__':
     # parser.add_argument("--epochs", type=int, default=6, help="number of epochs")
     args = parser.parse_args()
 
-    args.type = 0
+    args.type = 1
     args.epochs = 6
 
     main(args)

@@ -1,6 +1,8 @@
 import keras.backend as K
-from attack_utils import gen_grad
 import tensorflow as tf
+
+from attack_utils import gen_grad
+
 
 def symbolic_fgs(x, grad, eps=0.3, clipping=True):
     """
@@ -20,6 +22,7 @@ def symbolic_fgs(x, grad, eps=0.3, clipping=True):
         adv_x = K.clip(adv_x, 0, 1)
     return adv_x
 
+
 def symbolic_fg(x, grad, eps=0.3, clipping=True):
     """
     FG attack
@@ -27,8 +30,8 @@ def symbolic_fg(x, grad, eps=0.3, clipping=True):
     # Unit vector in direction of gradient
     reduc_ind = list(xrange(1, len(x.get_shape())))
     normed_grad = grad / tf.sqrt(tf.reduce_sum(tf.square(grad),
-                                                   reduction_indices=reduc_ind,
-                                                   keep_dims=True))
+                                               reduction_indices=reduc_ind,
+                                               keep_dims=True))
     # Multiply by constant epsilon
     scaled_grad = eps * normed_grad
 
@@ -55,10 +58,9 @@ def iter_fgs(model, x, y, steps, alpha, eps, clipping=True):
         adv_x = symbolic_fgs(adv_x, grad, alpha, True)
         r = adv_x - x
         r = K.clip(r, -eps, eps)
-        adv_x = x+r
+        adv_x = x + r
 
     if clipping:
         adv_x = K.clip(adv_x, 0, 1)
-
 
     return adv_x

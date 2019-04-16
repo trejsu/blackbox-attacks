@@ -1,8 +1,9 @@
-import keras.backend as K
 import numpy as np
+import keras.backend as K
 import tensorflow as tf
 
-FLAGS = tf.flags.FLAGS
+from tensorflow.python.platform import flags
+FLAGS = flags.FLAGS
 
 
 def linf_loss(X1, X2):
@@ -19,16 +20,14 @@ def gen_adv_loss(logits, y, loss='logloss', mean=False):
         # label leaking at training time
         y = K.cast(K.equal(logits, K.max(logits, 1, keepdims=True)), "float32")
         y = y / K.sum(y, 1, keepdims=True)
-        out = K.categorical_crossentropy(logits, y, from_logits=True)
+        out = K.categorical_crossentropy(y, logits, from_logits=True)
     elif loss == 'logloss':
-        # out = K.categorical_crossentropy(logits, y, from_logits=True)
-        out = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y)
-        out = tf.reduce_mean(out)
+        out = K.categorical_crossentropy(y, logits, from_logits=True)
     else:
         raise ValueError("Unknown loss: {}".format(loss))
 
     if mean:
-        out = tf.mean(out)
+        out = K.mean(out)
     # else:
     #     out = K.sum(out)
     return out
@@ -42,12 +41,10 @@ def gen_grad(x, logits, y, loss='logloss'):
     adv_loss = gen_adv_loss(logits, y, loss)
 
     # Define gradient of loss wrt input
-    grad, = tf.gradients(adv_loss, x)
+    grad = K.gradients(adv_loss, [x])[0]
     return grad
 
-
-def gen_hessian(x, logits, y, loss='logloss'):
-    adv_loss = gen_adv_loss(logits, y, loss)
-
-    hessian = tf.hessians(adv_loss, [x])[0]
-    return hessian
+def gen_grad_ens(x, logits, y):
+    adv_loss = K.categorical_crossentropy(logits, y, from_logits=True)
+    grad = K.gradients(adv_loss, [x])[0]
+    return adv_loss, grad

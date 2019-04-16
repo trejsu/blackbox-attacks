@@ -13,11 +13,6 @@ FLAGS = tf.flags.FLAGS
 
 
 def set_mnist_flags():
-    try:
-        tf.flags.DEFINE_integer('BATCH_SIZE', 64, 'Size of training batches')
-    except argparse.ArgumentError:
-        pass
-
     tf.flags.DEFINE_integer('NUM_CLASSES', 10, 'Number of classification classes')
     tf.flags.DEFINE_integer('IMAGE_ROWS', 28, 'Input row dimension')
     tf.flags.DEFINE_integer('IMAGE_COLS', 28, 'Input column dimension')
@@ -180,8 +175,6 @@ def model_mnist(type=1):
     """
     Defines MNIST model using Keras sequential model
     """
-    print(f'Returning model {type}')
-
     models = [modelA, modelB, modelC, modelD, modelE, modelF]
 
     return models[type]()
@@ -195,13 +188,11 @@ def data_gen_mnist(X_train):
 
 
 def load_model(model_path, type=0):
-    print(f'Loading model from {model_path}')
     try:
         with open(model_path + '.json', 'r') as f:
             json_string = f.read()
             model = model_from_json(json_string)
     except IOError:
-        print(f'Failed to read model from json, trying to load mnist model type {type}')
         model = model_mnist(type=type)
 
     model.load_weights(model_path)

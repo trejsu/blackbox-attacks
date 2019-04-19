@@ -9,7 +9,7 @@ from attack_utils import gen_adv_loss
 
 FLAGS = tf.flags.FLAGS
 EVAL_FREQUENCY = 1000
-BATCH_SIZE = 64
+BATCH_SIZE = 10
 BATCH_EVAL_NUM = 100
 
 

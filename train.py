@@ -1,3 +1,6 @@
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 import keras
 from keras import backend as K
 from keras.models import save_model
@@ -20,6 +23,30 @@ def main(args):
         # Get MNIST test data
         X_train, Y_train, X_test, Y_test = data_mnist()
 
+        N = 100
+        C = N // 10
+
+        X_train_reduced = np.empty((N, X_train.shape[1], X_train.shape[2], X_train.shape[3]))
+        Y_train_reduced = np.empty((N, Y_train.shape[1]))
+
+        for i in range(10):
+            indexes = np.where(np.argmax(Y_train, axis=1) == i)
+            X_train_reduced[i * C:i * C + C] = X_train[indexes][0:C]
+            Y_train_reduced[i * C:i * C + C] = Y_train[indexes][0:C]
+
+        np.random.seed(666)
+        np.random.shuffle(X_train_reduced)
+        np.random.seed(666)
+        np.random.shuffle(Y_train_reduced)
+
+        X_train = X_train_reduced
+        Y_train = Y_train_reduced
+
+        argmax = np.argmax(Y_train, axis=1)
+
+        for i in range(10):
+            assert np.sum(argmax == i) == C, f'{i} = {np.sum(argmax == i)}'
+
         data_gen = data_gen_mnist(X_train)
 
         x = K.placeholder((None,
@@ -38,7 +65,7 @@ def main(args):
         tf_train(x, y, model, X_train, Y_train, data_gen, None, None)
 
         # Finally print the result!
-        _, _, test_error = tf_test_error_rate(model, x, X_test, Y_test)
+        _, _, test_error = tf_test_error_rate(model(x), x, X_test, Y_test)
         print('Test error: %.1f%%' % test_error)
         save_model(model, args.model)
         json_string = model.to_json()
@@ -58,7 +85,7 @@ if __name__ == '__main__':
     # parser.add_argument("--epochs", type=int, default=6, help="number of epochs")
     args = parser.parse_args()
 
-    args.type = 1
+    args.type = 0
     args.epochs = 6
 
     main(args)

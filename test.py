@@ -69,10 +69,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", help="target model",
                         default="models_newest_keras/modelA")
-    parser.add_argument("--dataset", type=str, help="Path to the dataset",
-                        default='/Users/mchrusci/uj/shaper_data/adversarial/fixed/baseline-dom/baseline-norm-linf-alpha-0.0-targeted-0-adv-samples-redrawned-%d.npz')
+    parser.add_argument("--dataset", type=str, help="Path to the dataset", required=True)
     parser.add_argument("--targeted", type=bool, default=False)
-    parser.add_argument("--attack", type=bool, default=True)
+    parser.add_argument("--attack", type=bool, default=False)
     parser.add_argument("--mnist", type=bool, default=False)
     parser.add_argument("--n", type=int, default=100)
 

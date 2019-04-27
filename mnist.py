@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from keras.datasets import mnist
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import MaxPooling2D, Convolution2D
@@ -8,45 +7,38 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
 
 
-def set_mnist_flags():
-    tf.flags.DEFINE_integer('NUM_CLASSES', 10, 'Number of classification classes')
-    tf.flags.DEFINE_integer('IMAGE_ROWS', 28, 'Input row dimension')
-    tf.flags.DEFINE_integer('IMAGE_COLS', 28, 'Input column dimension')
-    tf.flags.DEFINE_integer('NUM_CHANNELS', 1, 'Input depth dimension')
-
-
 def data_mnist(one_hot=True):
-    """
-    Preprocess MNIST dataset
-    """
-    # the data, shuffled and split between train and test sets
-    (X_train, y_train), (X_test, y_test) = mnist.load_data()
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    return preprocess(x_test, x_train, one_hot, y_test, y_train)
 
-    # with np.load('/Users/mchrusci/uj/shaper_data/augmentation/mnist-10-augmented.npz') as data:
-    #     X_train = data['drawings']
-    #     y_train = data['Y']
 
+def preprocess(x_test, x_train, one_hot, y_test, y_train):
     print(f'y_train.shape = {y_train.shape}')
-
-    X_train = X_train.reshape(X_train.shape[0], 28, 28, 1)
-    X_test = X_test.reshape(X_test.shape[0], 28, 28, 1)
-
-    X_train = X_train.astype('float32')
-    X_test = X_test.astype('float32')
-    X_train /= 255
-    X_test /= 255
-    print('X_train shape:', X_train.shape)
-    print(X_train.shape[0], 'train samples')
-    print(X_test.shape[0], 'test samples')
-
+    x_train = x_train.reshape(x_train.shape[0], 28, 28, 1)
+    x_test = x_test.reshape(x_test.shape[0], 28, 28, 1)
+    x_train = x_train.astype('float32')
+    x_test = x_test.astype('float32')
+    x_train /= 255
+    x_test /= 255
+    print('X_train shape:', x_train.shape)
+    print(x_train.shape[0], 'train samples')
+    print(x_test.shape[0], 'test samples')
     print("Loaded MNIST test data.")
-
     if one_hot:
         # convert class vectors to binary class matrices
         y_train = np_utils.to_categorical(y_train, 10).astype(np.float32)
         y_test = np_utils.to_categorical(y_test, 10).astype(np.float32)
+    return x_train, y_train, x_test, y_test
 
-    return X_train, y_train, X_test, y_test
+
+def data(path, one_hot=True):
+    (_, _), (x_test, y_test) = mnist.load_data()
+
+    with np.load(path) as dataset:
+        x_train = dataset['drawings']
+        y_train = dataset['Y']
+
+    return preprocess(x_test, x_train, one_hot, y_test, y_train)
 
 
 def modelA():

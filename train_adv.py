@@ -15,9 +15,6 @@ BATCH_SIZE = 10
 def main(model_name, adv_model_names, model_type):
     np.random.seed(0)
     assert keras.backend.backend() == "tensorflow"
-    set_mnist_flags()
-
-    tf.flags.DEFINE_bool('NUM_EPOCHS', args.epochs, 'Number of epochs')
 
     # Get MNIST test data
     X_train, Y_train, X_test, Y_test = data_mnist()

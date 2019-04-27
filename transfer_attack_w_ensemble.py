@@ -7,10 +7,8 @@ from keras.utils import np_utils
 
 from attack_utils import gen_grad_ens
 from fgs import symbolic_fgs, symbolic_fg
-from mnist import data_mnist, set_mnist_flags, load_model
+from mnist import data_mnist, load_model
 from tf_utils import tf_test_error_rate, batch_eval
-
-FLAGS = tf.flags.FLAGS
 
 
 def gen_grad_cw(x, logits, y):
@@ -25,17 +23,14 @@ def main(attack, src_model_name, target_model_name):
     np.random.seed(0)
     tf.set_random_seed(0)
 
-    tf.flags.DEFINE_integer('BATCH_SIZE', 10, 'Size of batches')
-    set_mnist_flags()
-
-    dim = FLAGS.IMAGE_ROWS * FLAGS.IMAGE_COLS * FLAGS.NUM_CHANNELS
+    dim = 28 * 28 * 1
 
     x = K.placeholder((None,
-                       FLAGS.IMAGE_ROWS,
-                       FLAGS.IMAGE_COLS,
-                       FLAGS.NUM_CHANNELS))
+                       28,
+                       28,
+                       1))
 
-    y = K.placeholder((None, FLAGS.NUM_CLASSES))
+    y = K.placeholder((None, 10))
 
     _, _, X_test, Y_test = data_mnist()
     Y_test_uncat = np.argmax(Y_test, axis=1)
@@ -57,14 +52,14 @@ def main(attack, src_model_name, target_model_name):
 
     if args.targeted_flag == 1:
         targets = []
-        allowed_targets = list(range(FLAGS.NUM_CLASSES))
+        allowed_targets = list(range(10))
         for i in range(len(Y_test)):
             allowed_targets.remove(Y_test_uncat[i])
             targets.append(np.random.choice(allowed_targets))
-            allowed_targets = list(range(FLAGS.NUM_CLASSES))
+            allowed_targets = list(range(10))
         targets = np.array(targets)
         print(targets)
-        targets_cat = np_utils.to_categorical(targets, FLAGS.NUM_CLASSES).astype(np.float32)
+        targets_cat = np_utils.to_categorical(targets, 10).astype(np.float32)
         Y_test = targets_cat
 
     logits = src_model(x)

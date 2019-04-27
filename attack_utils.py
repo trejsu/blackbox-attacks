@@ -1,9 +1,5 @@
-import numpy as np
 import keras.backend as K
-import tensorflow as tf
-
-from tensorflow.python.platform import flags
-FLAGS = flags.FLAGS
+import numpy as np
 
 
 def linf_loss(X1, X2):
@@ -43,6 +39,7 @@ def gen_grad(x, logits, y, loss='logloss'):
     # Define gradient of loss wrt input
     grad = K.gradients(adv_loss, [x])[0]
     return grad
+
 
 def gen_grad_ens(x, logits, y):
     adv_loss = K.categorical_crossentropy(logits, y, from_logits=True)

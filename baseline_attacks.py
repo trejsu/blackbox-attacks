@@ -7,14 +7,11 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.platform import flags
 import scipy.misc
 from tqdm import tqdm
 # from es.draw_multiple import draw
 
 from mnist import data_mnist, set_mnist_flags, load_model
-
-FLAGS = flags.FLAGS
 
 CLIP_MIN = 0
 CLIP_MAX = 1
@@ -102,13 +99,13 @@ def main(target_model_name):
     tf.set_random_seed(0)
 
     x = K.placeholder((None,
-                       FLAGS.IMAGE_ROWS,
-                       FLAGS.IMAGE_COLS,
-                       FLAGS.NUM_CHANNELS))
+                       28,
+                       28,
+                       1))
 
-    y = K.placeholder((None, FLAGS.NUM_CLASSES))
+    y = K.placeholder((None, 10))
 
-    dim = int(FLAGS.IMAGE_ROWS * FLAGS.IMAGE_COLS * FLAGS.NUM_CHANNELS)
+    dim = int(28 * 28 * 1)
 
     _, _, X_test, Y_test = data_mnist()
     print('Loaded data')
@@ -131,7 +128,7 @@ def main(target_model_name):
 
     eps_list = [args.eps]
 
-    adv_images = np.empty((FLAGS.NUM_CLASSES * FLAGS.IMAGE_ROWS, len(eps_list) * FLAGS.IMAGE_COLS))
+    adv_images = np.empty((10 * 28, len(eps_list) * 28))
 
     total_X_adv = np.empty(X_test.shape)
     total_Y = np.empty(Y_test_uncat.shape)
@@ -150,14 +147,14 @@ def main(target_model_name):
         adv_success = 0.0
         avg_l2_perturb = 0.0
         NUM_SAVED = 0
-        for i in tqdm(range(FLAGS.NUM_CLASSES)):
+        for i in tqdm(range(10)):
             curr_indices = np.where(Y_test_uncat == i)
             NUM_SAMPLES = len(curr_indices[0])
             X_test_ini = X_test[curr_indices]
             Y_test_curr = Y_test_uncat[curr_indices]
             curr_len = len(X_test_ini)
             if args.targeted_flag == 1:
-                allowed_targets = list(range(FLAGS.NUM_CLASSES))
+                allowed_targets = list(range(10))
                 allowed_targets.remove(i)
 
             random_perturb = np.random.randn(*X_test_ini.shape)
@@ -178,7 +175,7 @@ def main(target_model_name):
             elif args.targeted_flag == 1:
                 targets = []
                 mean_diff_array = np.zeros(
-                    (curr_len, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                    (curr_len, 28, 28, 1))
                 for j in range(curr_len):
                     target = np.random.choice(allowed_targets)
                     targets.append(target)
@@ -197,9 +194,11 @@ def main(target_model_name):
 
             X_adv = np.clip(X_test_curr + perturb, CLIP_MIN, CLIP_MAX)
 
-            assert X_adv.shape[1:] == total_X_adv.shape[1:], f'X_adv.shape[1:] = {X_adv.shape[1:]}, total_X_adv.shape[1:] = {total_X_adv.shape[1:]}'
+            assert X_adv.shape[1:] == total_X_adv.shape[1:], f'X_adv.shape[1:] = {X_adv.shape[
+                                                                                  1:]}, total_X_adv.shape[1:] = {total_X_adv.shape[
+                                                                                                                 1:]}'
             assert X_adv.shape[0] == NUM_SAMPLES, f'X_adv.shape[0] = {X_adv.shape[0]}'
-            total_X_adv[NUM_SAVED:NUM_SAVED+NUM_SAMPLES] = X_adv
+            total_X_adv[NUM_SAVED:NUM_SAVED + NUM_SAMPLES] = X_adv
 
             # sample_x_adv = save_sample(X_adv, eps, i)
 
@@ -212,11 +211,11 @@ def main(target_model_name):
                     background='000000'
                 )[0]
 
-            # row_start = i * FLAGS.IMAGE_ROWS
-            # col_start = eps_idx * FLAGS.IMAGE_COLS
-            # no_channels_x = sample_x_adv.reshape(FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS)
-            # adv_images[row_start:row_start + FLAGS.IMAGE_ROWS,
-            # col_start: col_start + FLAGS.IMAGE_COLS] = no_channels_x
+            # row_start = i * 28
+            # col_start = eps_idx * 28
+            # no_channels_x = sample_x_adv.reshape(28, 28)
+            # adv_images[row_start:row_start + 28,
+            # col_start: col_start + 28] = no_channels_x
 
             # Getting the norm of the perturbation
             perturb_norm = np.linalg.norm((X_adv - X_test_ini).reshape(curr_len, dim), axis=1)
@@ -226,25 +225,33 @@ def main(target_model_name):
             predictions_adv = \
                 K.get_session().run([prediction], feed_dict={x: X_adv, K.learning_phase(): 0})[0]
 
-            total_adv_pred[NUM_SAVED:NUM_SAVED+NUM_SAMPLES] = np.argmax(predictions_adv, axis=1)
-            total_adv_prob[NUM_SAVED:NUM_SAVED+NUM_SAMPLES] = np.max(predictions_adv, axis=1)
+            total_adv_pred[NUM_SAVED:NUM_SAVED + NUM_SAMPLES] = np.argmax(predictions_adv, axis=1)
+            total_adv_prob[NUM_SAVED:NUM_SAVED + NUM_SAMPLES] = np.max(predictions_adv, axis=1)
 
             if args.targeted_flag == 0:
                 adv_success += np.sum(np.argmax(predictions_adv, 1) != Y_test_curr)
-                assert Y_test_curr.shape[1:] == total_Y.shape[1:], f'Y_test_curr.shape[1:] = {Y_test_curr.shape[1:]}, total_Y.shape[1:] = {total_Y.shape[1:]}'
-                assert Y_test_curr.shape[0] == NUM_SAMPLES, f'Y_test_curr.shape[0] = {Y_test_curr.shape[0]}'
-                total_Y[NUM_SAVED:NUM_SAVED+NUM_SAMPLES] = Y_test_curr
+                assert Y_test_curr.shape[1:] == total_Y.shape[
+                                                1:], f'Y_test_curr.shape[1:] = {Y_test_curr.shape[
+                                                                                1:]}, total_Y.shape[1:] = {total_Y.shape[
+                                                                                                           1:]}'
+                assert Y_test_curr.shape[0] == NUM_SAMPLES, f'Y_test_curr.shape[0] = {
+                Y_test_curr.shape[0]}'
+                total_Y[NUM_SAVED:NUM_SAVED + NUM_SAMPLES] = Y_test_curr
             elif args.targeted_flag == 1:
                 targets_arr = np.array(targets)
                 adv_success += np.sum(np.argmax(predictions_adv, 1) == targets_arr)
-                assert targets_arr.shape[1:] == total_Y.shape[1:], f'targets_arr.shape[1:] = {targets_arr.shape[1:]}, total_Y.shape[1:] = {total_Y.shape[1:]}'
-                assert targets_arr.shape[0] == NUM_SAMPLES, f'targets_arr.shape[0] = {targets_arr.shape[0]}'
-                total_Y[NUM_SAVED:NUM_SAVED+NUM_SAMPLES] = targets_arr
+                assert targets_arr.shape[1:] == total_Y.shape[
+                                                1:], f'targets_arr.shape[1:] = {targets_arr.shape[
+                                                                                1:]}, total_Y.shape[1:] = {total_Y.shape[
+                                                                                                           1:]}'
+                assert targets_arr.shape[0] == NUM_SAMPLES, f'targets_arr.shape[0] = {
+                targets_arr.shape[0]}'
+                total_Y[NUM_SAVED:NUM_SAVED + NUM_SAMPLES] = targets_arr
 
             NUM_SAVED += NUM_SAMPLES
 
         err = 100.0 * adv_success / len(X_test)
-        avg_l2_perturb = avg_l2_perturb / FLAGS.NUM_CLASSES
+        avg_l2_perturb = avg_l2_perturb / 10
 
         print(f'eps = {eps}, alpha = {alpha}, adv success = {err}')
         print(f'avg l2 pertub = {avg_l2_perturb}')
@@ -253,7 +260,8 @@ def main(target_model_name):
         scipy.misc.imsave('baseline_attacks_redrawned.png', adv_images)
     else:
         # save_total(adv_images, avg_l2_perturb, err)
-        file = os.path.join(ADVERSARIAL_DATA_PATH, f'baseline-norm-{args.norm}-alpha-{args.alpha}-targeted-{args.targeted_flag}-adv-samples')
+        file = os.path.join(ADVERSARIAL_DATA_PATH,
+                            f'baseline-norm-{args.norm}-alpha-{args.alpha}-targeted-{args.targeted_flag}-adv-samples')
         np.savez(file=file, X=total_X_adv, Y=total_Y, pred=total_adv_pred, prob=total_adv_prob)
 
 
@@ -272,7 +280,7 @@ def save_sample(X_adv, eps, i):
     sample_x_adv_name = f'baseline-norm-{args.norm}-alpha-{args.alpha}-targeted-{args.targeted_flag}-eps-{eps}-i-{i}.png'
     sample_x_adv_path = join(ADVERSARIAL_DATA_PATH, sample_x_adv_name)
     scipy.misc.imsave(sample_x_adv_path,
-                      sample_x_adv.reshape(FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS))
+                      sample_x_adv.reshape(28, 28))
     return sample_x_adv
 
 

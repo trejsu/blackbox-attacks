@@ -8,8 +8,6 @@ from keras.models import save_model
 from mnist import *
 from tf_utils import tf_train, tf_test_error_rate
 
-FLAGS = tf.flags.FLAGS
-
 
 def main(args):
     np.random.seed(0)
@@ -23,7 +21,7 @@ def main(args):
         # Get MNIST test data
         X_train, Y_train, X_test, Y_test = data_mnist()
 
-        N = 100
+        N = 1000
         C = N // 10
 
         X_train_reduced = np.empty((N, X_train.shape[1], X_train.shape[2], X_train.shape[3]))
@@ -47,15 +45,17 @@ def main(args):
         for i in range(10):
             assert np.sum(argmax == i) == C, f'{i} = {np.sum(argmax == i)}'
 
+        np.savez(f'mnist-{N}', X=X_train, Y=Y_train)
+
         data_gen = data_gen_mnist(X_train)
 
         x = K.placeholder((None,
-                           FLAGS.IMAGE_ROWS,
-                           FLAGS.IMAGE_COLS,
-                           FLAGS.NUM_CHANNELS
+                           28,
+                           28,
+                           1
                            ))
 
-        y = K.placeholder(shape=(None, FLAGS.NUM_CLASSES))
+        y = K.placeholder(shape=(None, 10))
 
         model = model_mnist(type=args.type)
 

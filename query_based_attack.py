@@ -8,7 +8,6 @@ from os.path import basename
 
 import keras.backend as K
 import numpy as np
-import scipy.misc
 import tensorflow as tf
 from keras.utils import np_utils
 from sklearn.decomposition import PCA
@@ -20,8 +19,6 @@ from tqdm import tqdm
 from es.draw_multiple import draw
 
 K.set_learning_phase(0)
-
-FLAGS = tf.flags.FLAGS
 
 RANDOM = True
 BATCH_SIZE = 10
@@ -61,7 +58,7 @@ def xent_est(prediction, x, x_plus_i, x_minus_i, curr_target):
 
 def run_model(output_tensor, input_tensor, input_data):
     if args.redraw:
-        batched = input_data.reshape((-1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+        batched = input_data.reshape((-1, 28, 28, 1))
         input = draw(images=batched, n=20, alpha=0.8, background="000000")
     else:
         input = input_data
@@ -90,20 +87,20 @@ def CW_est(logits, x, x_plus_i, x_minus_i, curr_sample, curr_target):
 
 def overall_grad_est(j, logits, prediction, x, curr_sample, curr_target,
     p_t, random_indices, num_groups, U=None):
-    basis_vec = np.zeros((BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+    basis_vec = np.zeros((BATCH_SIZE, 28, 28, 1))
 
     if not PCA_FLAG:
         if j != num_groups - 1:
             curr_indices = random_indices[j * args.group_size:(j + 1) * args.group_size]
         elif j == num_groups - 1:
             curr_indices = random_indices[j * args.group_size:]
-        row = curr_indices // FLAGS.IMAGE_COLS
-        col = curr_indices % FLAGS.IMAGE_COLS
+        row = curr_indices // 28
+        col = curr_indices % 28
         for i in range(len(curr_indices)):
             basis_vec[:, row[i], col[i]] = 1.
 
     elif PCA_FLAG:
-        basis_vec[:] = U[:, j].reshape((1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+        basis_vec[:] = U[:, j].reshape((1, 28, 28, 1))
         # basis_vec = np.sign(basis_vec)
 
     x_plus_i = np.clip(curr_sample + args.delta * basis_vec, CLIP_MIN, CLIP_MAX)
@@ -123,8 +120,8 @@ def overall_grad_est(j, logits, prediction, x, curr_sample, curr_target,
 
 
 def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim, U=None):
-    grad_est = np.zeros((BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS,
-                         FLAGS.NUM_CHANNELS))
+    grad_est = np.zeros((BATCH_SIZE, 28, 28,
+                         1))
     logits_np = run_model(logits, x, curr_sample)
     if not PCA_FLAG:
         random_indices = np.random.permutation(dim)
@@ -160,13 +157,13 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
                     curr_indices = random_indices[j * args.group_size:(j + 1) * args.group_size]
                 elif j == num_groups - 1:
                     curr_indices = random_indices[j * args.group_size:]
-                row = curr_indices // FLAGS.IMAGE_COLS
-                col = curr_indices % FLAGS.IMAGE_COLS
+                row = curr_indices // 28
+                col = curr_indices % 28
                 for i in range(len(curr_indices)):
                     grad_est[:, row[i], col[i]] = all_grads[j].reshape((BATCH_SIZE, 1))
             elif PCA_FLAG:
-                basis_vec = np.zeros((BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
-                basis_vec[:] = U[:, j].reshape((1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                basis_vec = np.zeros((BATCH_SIZE, 28, 28, 1))
+                basis_vec[:] = U[:, j].reshape((1, 28, 28, 1))
                 grad_est += basis_vec * all_grads[j][:, None, None, None]
 
     else:
@@ -178,15 +175,15 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
                     curr_indices = random_indices[j * args.group_size:(j + 1) * args.group_size]
                 elif j == num_groups - 1:
                     curr_indices = random_indices[j * args.group_size:]
-                row = curr_indices // FLAGS.IMAGE_COLS
-                col = curr_indices % FLAGS.IMAGE_COLS
+                row = curr_indices // 28
+                col = curr_indices % 28
                 for i in range(len(curr_indices)):
                     grad_est[:, row[i], col[i]] = single_grad_est.reshape((BATCH_SIZE, 1))
             elif PCA_FLAG:
                 basis_vec = np.zeros(
-                    (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                    (BATCH_SIZE, 28, 28, 1))
                 basis_vec[:] = U[:, j].reshape(
-                    (1, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+                    (1, 28, 28, 1))
                 grad_est += basis_vec * single_grad_est[:, None, None, None]
 
     # Getting gradient of the loss
@@ -203,7 +200,7 @@ def finite_diff_method(prediction, logits, x, curr_sample, curr_target, p_t, dim
         else:
             zero_indices = np.where(-logit_diff + args.conf < 0.0)
         grad_est[zero_indices[0]] = np.zeros(
-            (len(zero_indices), FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+            (len(zero_indices), 28, 28, 1))
         loss_grad = grad_est
 
     return loss_grad
@@ -215,7 +212,7 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
     time1 = time.time()
     U = None
     X_adv = np.zeros(
-        (BATCH_SIZE * BATCH_EVAL_NUM, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+        (BATCH_SIZE * BATCH_EVAL_NUM, 28, 28, 1))
     if PCA_FLAG:
         U = pca_components(X_test, dim)
 
@@ -226,9 +223,9 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
 
     for i in tqdm(range(BATCH_EVAL_NUM)):
         curr_sample = X_test[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
         curr_sample_ini = X_test_ini[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
 
         curr_target = targets[i * BATCH_SIZE:(i + 1) * BATCH_SIZE]
 
@@ -263,7 +260,7 @@ def estimated_grad_attack(X_test, X_test_ini, x, targets, prediction, logits, ep
         # Getting the norm of the perturbation
         perturb_norm = np.linalg.norm((x_adv - curr_sample_ini).reshape(BATCH_SIZE, dim), axis=1)
         X_adv[i * BATCH_SIZE:(i + 1) * BATCH_SIZE] = x_adv.reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
         perturb_norm_batch = np.mean(perturb_norm)
         avg_l2_perturb += perturb_norm_batch
 
@@ -309,10 +306,9 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
     time1 = time.time()
     U = None
     X_adv = np.zeros(
-        (BATCH_SIZE * BATCH_EVAL_NUM, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+        (BATCH_SIZE * BATCH_EVAL_NUM, 28, 28, 1))
     if PCA_FLAG == True:
         U = pca_components(X_test, dim)
-
 
     total_Y = np.empty((X_adv.shape[0],))
     total_adv_pred = np.empty((X_adv.shape[0],))
@@ -323,9 +319,9 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
         if i % 10 == 0:
             print('Batch no.: {}, {}'.format(i, eps))
         curr_sample = X_test[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
         curr_sample_ini = X_test_ini[i * BATCH_SIZE:(i + 1) * BATCH_SIZE].reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
 
         curr_target = targets[i * BATCH_SIZE:(i + 1) * BATCH_SIZE]
         eps_mod = eps - args.alpha
@@ -381,7 +377,7 @@ def estimated_grad_attack_iter(X_test, X_test_ini, x, targets, prediction, logit
 
         adv_prediction = run_model(prediction, x, x_adv)
         X_adv[i * BATCH_SIZE:(i + 1) * BATCH_SIZE] = x_adv.reshape(
-            (BATCH_SIZE, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, 1))
+            (BATCH_SIZE, 28, 28, 1))
         success += np.sum(np.argmax(adv_prediction, 1) == curr_target)
 
         total_adv_pred[NUM_SAVED:NUM_SAVED + BATCH_SIZE] = np.argmax(adv_prediction, axis=1)
@@ -414,13 +410,13 @@ def main(target_model_name, target=None):
     tf.set_random_seed(0)
 
     x = K.placeholder((None,
-                       FLAGS.IMAGE_ROWS,
-                       FLAGS.IMAGE_COLS,
-                       FLAGS.NUM_CHANNELS))
+                       28,
+                       28,
+                       1))
 
-    y = K.placeholder((None, FLAGS.NUM_CLASSES))
+    y = K.placeholder((None, 10))
 
-    dim = int(FLAGS.IMAGE_ROWS * FLAGS.IMAGE_COLS)
+    dim = int(28 * 28)
 
     _, _, X_test_ini, Y_test = data_mnist()
     print('Loaded data')
@@ -434,8 +430,6 @@ def main(target_model_name, target=None):
     logits = target_model(x)
     prediction = K.softmax(logits)
 
-
-
     print('Creating session')
 
     if '_un' in args.method:
@@ -444,15 +438,15 @@ def main(target_model_name, target=None):
         targets = np.array([target] * (BATCH_SIZE * BATCH_EVAL_NUM))
     elif RANDOM is True:
         targets = []
-        allowed_targets = list(range(FLAGS.NUM_CLASSES))
+        allowed_targets = list(range(10))
         for i in range(BATCH_SIZE * BATCH_EVAL_NUM):
             allowed_targets.remove(Y_test_uncat[i])
             targets.append(np.random.choice(allowed_targets))
-            allowed_targets = list(range(FLAGS.NUM_CLASSES))
+            allowed_targets = list(range(10))
         # targets = np.random.randint(10, size = BATCH_SIZE*BATCH_EVAL_NUM)
         targets = np.array(targets)
         # print(targets)
-    targets_cat = np_utils.to_categorical(targets, FLAGS.NUM_CLASSES).astype(np.float32)
+    targets_cat = np_utils.to_categorical(targets, 10).astype(np.float32)
 
     if args.norm == 'linf':
         # eps_list = list(np.linspace(0.025, 0.1, 4))
@@ -466,7 +460,7 @@ def main(target_model_name, target=None):
         # eps_list = [5.0]
     # print(eps_list)
 
-    adv_images = np.empty((FLAGS.NUM_CLASSES * FLAGS.IMAGE_ROWS, len(eps_list) * FLAGS.IMAGE_COLS))
+    adv_images = np.empty((10 * 28, len(eps_list) * 28))
 
     random_perturb = np.random.randn(*X_test_ini.shape)
 
@@ -527,7 +521,7 @@ if __name__ == "__main__":
         PCA_FLAG = True
 
     if RANDOM is False:
-        for i in range(FLAGS.NUM_CLASSES):
+        for i in range(10):
             main(args.target_model, i)
     elif RANDOM is True:
         main(args.target_model)

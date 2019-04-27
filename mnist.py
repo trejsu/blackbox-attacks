@@ -1,15 +1,11 @@
-import argparse
-
 import numpy as np
 import tensorflow as tf
 from keras.datasets import mnist
-from keras.layers import Dense, Dropout, Activation, Flatten, Conv2D
+from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import MaxPooling2D, Convolution2D
 from keras.models import Sequential, model_from_json
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
-
-FLAGS = tf.flags.FLAGS
 
 
 def set_mnist_flags():
@@ -26,10 +22,14 @@ def data_mnist(one_hot=True):
     # the data, shuffled and split between train and test sets
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
-    y_train = y_train
+    # with np.load('/Users/mchrusci/uj/shaper_data/augmentation/mnist-10-augmented.npz') as data:
+    #     X_train = data['drawings']
+    #     y_train = data['Y']
 
-    X_train = X_train.reshape(X_train.shape[0], FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)
-    X_test = X_test.reshape(X_test.shape[0], FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)
+    print(f'y_train.shape = {y_train.shape}')
+
+    X_train = X_train.reshape(X_train.shape[0], 28, 28, 1)
+    X_test = X_test.reshape(X_test.shape[0], 28, 28, 1)
 
     X_train = X_train.astype('float32')
     X_test = X_test.astype('float32')
@@ -43,8 +43,8 @@ def data_mnist(one_hot=True):
 
     if one_hot:
         # convert class vectors to binary class matrices
-        y_train = np_utils.to_categorical(y_train, FLAGS.NUM_CLASSES).astype(np.float32)
-        y_test = np_utils.to_categorical(y_test, FLAGS.NUM_CLASSES).astype(np.float32)
+        y_train = np_utils.to_categorical(y_train, 10).astype(np.float32)
+        y_test = np_utils.to_categorical(y_test, 10).astype(np.float32)
 
     return X_train, y_train, X_test, y_test
 
@@ -64,13 +64,13 @@ def modelA():
     model.add(Activation('relu'))
 
     model.add(Dropout(0.5))
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
     return model
 
 
 def modelB():
     model = Sequential()
-    model.add(Dropout(0.2, input_shape=(FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS)))
+    model.add(Dropout(0.2, input_shape=(28, 28, 1)))
     model.add(Convolution2D(64, 8, 8, subsample=(2, 2), border_mode='same'))
     model.add(Activation('relu'))
 
@@ -83,7 +83,7 @@ def modelB():
     model.add(Dropout(0.5))
 
     model.add(Flatten())
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
     return model
 
 
@@ -91,9 +91,9 @@ def modelC():
     model = Sequential()
     model.add(Convolution2D(128, 3, 3,
                             border_mode='valid',
-                            input_shape=(FLAGS.IMAGE_ROWS,
-                                         FLAGS.IMAGE_COLS,
-                                         FLAGS.NUM_CHANNELS)))
+                            input_shape=(28,
+                                         28,
+                                         1)))
     model.add(Activation('relu'))
 
     model.add(Convolution2D(64, 3, 3))
@@ -106,16 +106,16 @@ def modelC():
     model.add(Activation('relu'))
 
     model.add(Dropout(0.5))
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
     return model
 
 
 def modelD():
     model = Sequential()
 
-    model.add(Flatten(input_shape=(FLAGS.IMAGE_ROWS,
-                                   FLAGS.IMAGE_COLS,
-                                   FLAGS.NUM_CHANNELS)))
+    model.add(Flatten(input_shape=(28,
+                                   28,
+                                   1)))
 
     model.add(Dense(300, init='he_normal', activation='relu'))
     model.add(Dropout(0.5))
@@ -126,21 +126,21 @@ def modelD():
     model.add(Dense(300, init='he_normal', activation='relu'))
     model.add(Dropout(0.5))
 
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
     return model
 
 
 def modelE():
     model = Sequential()
 
-    model.add(Flatten(input_shape=(FLAGS.IMAGE_ROWS,
-                                   FLAGS.IMAGE_COLS,
-                                   FLAGS.NUM_CHANNELS)))
+    model.add(Flatten(input_shape=(28,
+                                   28,
+                                   1)))
 
     model.add(Dense(100, activation='relu'))
     model.add(Dense(100, activation='relu'))
 
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
 
     return model
 
@@ -150,9 +150,9 @@ def modelF():
 
     model.add(Convolution2D(32, 3, 3,
                             border_mode='valid',
-                            input_shape=(FLAGS.IMAGE_ROWS,
-                                         FLAGS.IMAGE_COLS,
-                                         FLAGS.NUM_CHANNELS)))
+                            input_shape=(28,
+                                         28,
+                                         1)))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -166,7 +166,7 @@ def modelF():
     model.add(Dense(1024))
     model.add(Activation('relu'))
 
-    model.add(Dense(FLAGS.NUM_CLASSES))
+    model.add(Dense(10))
 
     return model
 

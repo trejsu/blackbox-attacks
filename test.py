@@ -2,7 +2,6 @@ import os
 
 import keras.backend as K
 import numpy as np
-from tensorflow.python.platform import flags
 from tqdm import tqdm
 
 from mnist import data_mnist
@@ -11,11 +10,9 @@ from mnist import set_mnist_flags
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-FLAGS = flags.FLAGS
-
 
 def main():
-    x = K.placeholder((None, FLAGS.IMAGE_ROWS, FLAGS.IMAGE_COLS, FLAGS.NUM_CHANNELS))
+    x = K.placeholder((None, 28, 28, 1))
 
     model = load_model(args.model)
     logits = model(x)

@@ -1,15 +1,15 @@
+from os.path import basename
+
 import keras
 from keras import backend as K
 from keras.models import save_model
 
-from mnist import *
-from tf_utils import tf_train, tf_test_error_rate
 from attack_utils import gen_grad
 from fgs import symbolic_fgs, iter_fgs
-from os.path import basename
-import tensorflow as tf
+from mnist import *
+from tf_utils import tf_train, tf_test_error_rate
 
-FLAGS = flags.FLAGS
+BATCH_SIZE = 10
 
 
 def main(model_name, adv_model_names, model_type):
@@ -25,11 +25,11 @@ def main(model_name, adv_model_names, model_type):
     data_gen = data_gen_mnist(X_train)
 
     x = K.placeholder(shape=(None,
-                             FLAGS.IMAGE_ROWS,
-                             FLAGS.IMAGE_COLS,
-                             FLAGS.NUM_CHANNELS))
+                             28,
+                             28,
+                             1))
 
-    y = K.placeholder(shape=(FLAGS.BATCH_SIZE, FLAGS.NUM_CLASSES))
+    y = K.placeholder(shape=(BATCH_SIZE, 10))
 
     eps = args.eps
     norm = args.norm
@@ -40,9 +40,9 @@ def main(model_name, adv_model_names, model_type):
     ens_str = ''
     for i in range(len(adv_model_names)):
         adv_models[i] = load_model(adv_model_names[i])
-        if len(adv_models)>0:
+        if len(adv_models) > 0:
             name = basename(adv_model_names[i])
-            model_index = name.replace('model','')
+            model_index = name.replace('model', '')
             ens_str += model_index
     model = model_mnist(type=model_type)
 
@@ -54,10 +54,10 @@ def main(model_name, adv_model_names, model_type):
             grad = gen_grad(x, logits, y, loss='training')
             x_advs[i] = symbolic_fgs(x, grad, eps=eps)
         elif args.iter == 1:
-            x_advs[i] = iter_fgs(m, x, y, steps = 40, alpha = 0.01, eps = args.eps)
+            x_advs[i] = iter_fgs(m, x, y, steps=40, alpha=0.01, eps=args.eps)
 
     # Train an MNIST model
-    tf_train(x, y, model, X_train, Y_train, data_gen, x_advs=x_advs, benign = args.ben)
+    tf_train(x, y, model, X_train, Y_train, data_gen, x_advs=x_advs, benign=args.ben)
 
     # Finally print the result!
     test_error = tf_test_error_rate(model, x, X_test, Y_test)
@@ -69,11 +69,13 @@ def main(model_name, adv_model_names, model_type):
         model_name += '_nob'
     save_model(model, model_name)
     json_string = model.to_json()
-    with open(model_name+'.json', 'wr') as f:
+    with open(model_name + '.json', 'wr') as f:
         f.write(json_string)
+
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("model", help="path to model")
     parser.add_argument('adv_models', nargs='*',

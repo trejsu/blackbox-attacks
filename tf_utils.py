@@ -7,10 +7,10 @@ import tensorflow as tf
 
 from attack_utils import gen_adv_loss
 
-FLAGS = tf.flags.FLAGS
 EVAL_FREQUENCY = 1000
-BATCH_SIZE = 10
+BATCH_SIZE = 64
 BATCH_EVAL_NUM = 100
+NUM_EPOCHS = 6
 
 
 def batch_eval(tf_inputs, tf_outputs, numpy_inputs):
@@ -122,7 +122,7 @@ def tf_train(x, y, model, X_train, Y_train, generator, x_advs=None, benign=None,
     print('Initialized!')
 
     # Loop through training steps.
-    num_steps = int(FLAGS.NUM_EPOCHS * train_size + BATCH_SIZE - 1) // BATCH_SIZE
+    num_steps = int(NUM_EPOCHS * train_size + BATCH_SIZE - 1) // BATCH_SIZE
 
     step = 0
     training_loss = 0

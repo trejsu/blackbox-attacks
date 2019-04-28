@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 from mnist import data_mnist
 from mnist import load_model
-from mnist import set_mnist_flags
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -73,10 +72,8 @@ if __name__ == '__main__':
     parser.add_argument("--targeted", type=bool, default=False)
     parser.add_argument("--attack", type=bool, default=False)
     parser.add_argument("--mnist", type=bool, default=False)
-    parser.add_argument("--n", type=int, default=100)
+    parser.add_argument("--n", type=int, default=None)
 
     args = parser.parse_args()
-
-    set_mnist_flags()
 
     main()

@@ -28,7 +28,12 @@ def main():
             Y = data['Y'].reshape(-1, )
 
         accuracy = get_accuracy(X, Y, prediction, x)
-        print(f'accuracy = {accuracy}')
+
+        if args.save_path is None:
+            print(f'accuracy = {accuracy}')
+        else:
+            with open(args.save_path, "w+") as f:
+                f.write(f'{accuracy}\n')
 
     else:
         result = []
@@ -73,6 +78,7 @@ if __name__ == '__main__':
     parser.add_argument("--attack", type=bool, default=False)
     parser.add_argument("--mnist", type=bool, default=False)
     parser.add_argument("--n", type=int, default=None)
+    parser.add_argument("--save-path", type=str)
 
     args = parser.parse_args()
 

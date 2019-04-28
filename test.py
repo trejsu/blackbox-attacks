@@ -20,7 +20,7 @@ def main():
     if args.mnist:
         _, _, X, Y = data_mnist(one_hot=False)
         accuracy = get_accuracy(X, Y, prediction, x)
-        print(f'accuracy = {accuracy}')
+        output_results(accuracy)
 
     elif args.n is None:
         with np.load(args.dataset) as data:
@@ -28,12 +28,7 @@ def main():
             Y = data['Y'].reshape(-1, )
 
         accuracy = get_accuracy(X, Y, prediction, x)
-
-        if args.save_path is None:
-            print(f'accuracy = {accuracy}')
-        else:
-            with open(args.save_path, "w+") as f:
-                f.write(f'{accuracy}\n')
+        output_results(accuracy)
 
     else:
         result = []
@@ -56,6 +51,14 @@ def main():
             result.append(accuracy)
 
         print(result)
+
+
+def output_results(accuracy):
+    if args.save_path is None:
+        print(f'accuracy = {accuracy}')
+    else:
+        with open(args.save_path, "w+") as f:
+            f.write(f'{accuracy}\n')
 
 
 def get_accuracy(X, Y, prediction, x):

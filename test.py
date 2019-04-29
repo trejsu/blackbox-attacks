@@ -24,7 +24,7 @@ def main():
 
     elif args.n is None:
         with np.load(args.dataset) as data:
-            X = data['drawings']
+            X = data['drawings'] / 255
             Y = data['Y'].reshape(-1, )
 
         accuracy = get_accuracy(X, Y, prediction, x)
@@ -35,7 +35,7 @@ def main():
 
         for i in tqdm(range(1, args.n + 1)):
             with np.load(args.dataset % i) as data:
-                X = data['drawings']
+                X = data['drawings'] / 255
                 Y = data['Y'].reshape(-1, )
 
             predictions = \

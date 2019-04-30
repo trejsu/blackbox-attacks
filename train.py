@@ -19,7 +19,8 @@ def main(args):
             else data(
             path=args.dataset,
             representation=args.representation,
-            test_path=args.test_path
+            test_path=args.test_path,
+            n=args.n
         )
 
         data_gen = data_gen_mnist(x_train)
@@ -51,11 +52,14 @@ if __name__ == '__main__':
     parser.add_argument("--x-dim", nargs='+', type=int)
     parser.add_argument("--representation", action="store_true")
     parser.add_argument("--test-path", type=str)
+    parser.add_argument("--n", type=int)
     args = parser.parse_args()
 
     args.x_dim = tuple(args.x_dim)
 
     args.type = 0
     args.epochs = 6
+
+    assert not args.representation or args.n is not None
 
     main(args)

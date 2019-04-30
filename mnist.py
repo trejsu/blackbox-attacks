@@ -5,8 +5,8 @@ from keras.layers import MaxPooling2D, Convolution2D
 from keras.models import Sequential, model_from_json
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 
 def data_mnist(one_hot=True):
@@ -29,21 +29,28 @@ def preprocess_mnist(x_test, x_train):
     return x_train, x_test
 
 
-def preprocess_representation(x_test, x_train):
+def preprocess_representation(x_test, x_train, n):
+    x_train = x_train[:, 0:n]
+    x_test = x_test[:, 0:n]
+
     scaler = StandardScaler()
     scaler.fit(x_train)
     x_train_scaled = scaler.transform(x_train)
     x_test_scaled = scaler.transform(x_test)
 
-    pca = PCA(n_components=7, whiten=True)
+    n_components = 7
+    pca = PCA(n_components=n_components, whiten=True)
     pca.fit(x_train_scaled)
     x_train_reduced = pca.transform(x_train_scaled)
     x_test_reduced = pca.transform(x_test_scaled)
 
+    assert x_train_reduced.shape == (x_train.shape[0], n, n_components)
+    assert x_test_reduced.shape == (x_test.shape[0], n, n_components)
+
     return x_train_reduced, x_test_reduced
 
 
-def data(path, representation=False, test_path=None, one_hot=True):
+def data(path, representation=False, test_path=None, one_hot=True, n=None):
     if representation:
         with np.load(test_path) as dataset:
             x_test = dataset['drawings']
@@ -58,7 +65,7 @@ def data(path, representation=False, test_path=None, one_hot=True):
     if one_hot:
         y_test, y_train = make_one_hot(y_test, y_train)
 
-    x_train, x_test = preprocess_representation(x_test, x_train) if representation \
+    x_train, x_test = preprocess_representation(x_test, x_train, n) if representation \
         else preprocess_mnist(x_test, x_train)
 
     return x_train, y_train, x_test, y_test

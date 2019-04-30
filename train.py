@@ -15,50 +15,23 @@ def main(args):
     assert keras.backend.backend() == "tensorflow"
 
     with tf.device('/gpu:0'):
-        # Get MNIST test data
-        X_train, Y_train, X_test, Y_test = data_mnist() if args.dataset == "mnist" \
-            else data(path=args.dataset)
+        x_train, y_train, x_test, y_test = data_mnist() if args.dataset == "mnist" \
+            else data(
+            path=args.dataset,
+            representation=args.representation,
+            test_path=args.test_path
+        )
 
-        # N = 1000
-        # C = N // 10
-        #
-        # X_train_reduced = np.empty((N, X_train.shape[1], X_train.shape[2], X_train.shape[3]))
-        # Y_train_reduced = np.empty((N, Y_train.shape[1]))
-        #
-        # for i in range(10):
-        #     indexes = np.where(np.argmax(Y_train, axis=1) == i)
-        #     X_train_reduced[i * C:i * C + C] = X_train[indexes][0:C]
-        #     Y_train_reduced[i * C:i * C + C] = Y_train[indexes][0:C]
-        #
-        # np.random.seed(666)
-        # np.random.shuffle(X_train_reduced)
-        # np.random.seed(666)
-        # np.random.shuffle(Y_train_reduced)
-        #
-        # X_train = X_train_reduced
-        # Y_train = Y_train_reduced
-        #
-        # argmax = np.argmax(Y_train, axis=1)
-        #
-        # for i in range(10):
-        #     assert np.sum(argmax == i) == C, f'{i} = {np.sum(argmax == i)}'
-        #
-        # np.savez(f'mnist-{N}', X=X_train, Y=Y_train)
+        data_gen = data_gen_mnist(x_train)
 
-        data_gen = data_gen_mnist(X_train)
-
-        x = K.placeholder((None, 28, 28, 1))
+        x = K.placeholder(args.x_dim)
         y = K.placeholder(shape=(None, 10))
 
         model = model_mnist(type=args.type)
 
-        # print(model.summary())
+        tf_train(x, y, model, x_train, y_train, data_gen, None, None)
 
-        # Train an MNIST model
-        tf_train(x, y, model, X_train, Y_train, data_gen, None, None)
-
-        # Finally print the result!
-        _, _, test_error = tf_test_error_rate(model(x), x, X_test, Y_test)
+        _, _, test_error = tf_test_error_rate(model(x), x, x_test, y_test)
         print('Test error: %.1f%%' % test_error)
         save_model(model, args.model)
         json_string = model.to_json()
@@ -74,10 +47,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("model", help="path to model")
-    # parser.add_argument("--type", type=int, help="model type", default=1)
-    # parser.add_argument("--epochs", type=int, default=6, help="number of epochs")
     parser.add_argument("--dataset", default="mnist")
+    parser.add_argument("--x-dim", nargs='+', type=int)
+    parser.add_argument("--representation", action="store_true")
+    parser.add_argument("--test-path", type=str)
     args = parser.parse_args()
+
+    args.x_dim = tuple(args.x_dim)
 
     args.type = 0
     args.epochs = 6

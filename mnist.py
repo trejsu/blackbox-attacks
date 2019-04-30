@@ -5,6 +5,8 @@ from keras.layers import MaxPooling2D, Convolution2D
 from keras.models import Sequential, model_from_json
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 
 def data_mnist(one_hot=True):
@@ -28,8 +30,17 @@ def preprocess_mnist(x_test, x_train):
 
 
 def preprocess_representation(x_test, x_train):
-    # todo:
-    return x_train, x_test
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train_scaled = scaler.transform(x_train)
+    x_test_scaled = scaler.transform(x_test)
+
+    pca = PCA(n_components=7, whiten=True)
+    pca.fit(x_train_scaled)
+    x_train_reduced = pca.transform(x_train_scaled)
+    x_test_reduced = pca.transform(x_test_scaled)
+
+    return x_train_reduced, x_test_reduced
 
 
 def data(path, representation=False, test_path=None, one_hot=True):

@@ -30,8 +30,8 @@ def preprocess_mnist(x_test, x_train):
 
 
 def preprocess_representation(x_test, x_train, n):
-    x_train = x_train[:, 0:n]
-    x_test = x_test[:, 0:n]
+    x_train = x_train[:, 0:n].reshape(-1, 8)
+    x_test = x_test[:, 0:n].reshape(-1, 8)
 
     scaler = StandardScaler()
     scaler.fit(x_train)
@@ -47,7 +47,7 @@ def preprocess_representation(x_test, x_train, n):
     assert x_train_reduced.shape == (x_train.shape[0], n, n_components)
     assert x_test_reduced.shape == (x_test.shape[0], n, n_components)
 
-    return x_train_reduced, x_test_reduced
+    return x_train_reduced.reshape(-1, n, 8), x_test_reduced.reshape(-1, n, 8)
 
 
 def data(path, representation=False, test_path=None, one_hot=True, n=None):

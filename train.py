@@ -34,6 +34,11 @@ def main(args):
 
         _, _, test_error = tf_test_error_rate(model(x), x, x_test, y_test)
         print('Test error: %.1f%%' % test_error)
+        accuracy = 100 - test_error
+
+        with open(args.accuracy_path, 'w+') as f:
+            f.write(accuracy)
+
         save_model(model, args.model)
         json_string = model.to_json()
         try:
@@ -53,6 +58,7 @@ if __name__ == '__main__':
     parser.add_argument("--representation", action="store_true")
     parser.add_argument("--test-path", type=str)
     parser.add_argument("--n", type=int)
+    parser.add_argument("--accuracy-path", type=str, required=True)
     args = parser.parse_args()
 
     args.x_dim = tuple(args.x_dim)

@@ -25,7 +25,7 @@ def main(args):
 
         data_gen = data_gen_mnist(x_train)
 
-        x = K.placeholder(args.x_dim)
+        x = K.placeholder((None, ) + args.x_dim)
         y = K.placeholder(shape=(None, 10))
 
         model = model_mnist(type=args.type)

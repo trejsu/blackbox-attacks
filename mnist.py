@@ -44,7 +44,7 @@ def preprocess_representation(x_test, x_train, n):
     x_train_reduced = pca.transform(x_train_scaled)
     x_test_reduced = pca.transform(x_test_scaled)
 
-    return x_train_reduced.reshape(-1, n, n_components), x_test_reduced.reshape(-1, n, n_components)
+    return x_train_reduced.reshape(-1, n, n_components, 1), x_test_reduced.reshape(-1, n, n_components, 1)
 
 
 def data(path, representation=False, test_path=None, one_hot=True, n=None):
